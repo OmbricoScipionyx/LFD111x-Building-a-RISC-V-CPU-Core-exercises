@@ -78,10 +78,10 @@
                 $is_b_instr;
    
    $rd[4:0] = $instr[11:7];
-   $rd_valid = $is_r_instr ||
-               $is_i_instr ||
-               $is_u_instr ||
-               $is_j_instr;
+   $rd_valid = ($is_r_instr ||
+                $is_i_instr ||
+                $is_u_instr ||
+                $is_j_instr) && ($rd[4:0] != 5'b0);
    
    $funct3[2:0] = $instr[14:12];
    $funct3_valid = $is_r_instr ||
@@ -113,6 +113,11 @@
    $is_addi = $dec_bits ==? 11'bx_000_0010011;
    $is_add = $dec_bits ==? 11'b0_000_0110011;
    
+   // ALU
+   
+   $result[31:0] = $is_addi ? $source_data1 + $imm :
+                   $is_add ? $source_data1 + $source_data2 :
+                   32'b0;
    
    `BOGUS_USE($dec_bits $is_bgeu $is_addi $is_add $imm $is_beq $is_bne $is_blt $is_bge $is_bltu $rd $rd_valid $rs1 $rs1_valid $rs2 $rs2_valid $imm_valid $funct3 $funct3_valid)
    
@@ -120,7 +125,7 @@
    *passed = 1'b0;
    *failed = *cyc_cnt > M4_MAX_CYC;
    
-   //m4+rf(32, 32, $reset, $wr_en, $wr_index[4:0], $wr_data[31:0], $rd_en1, $rd_index1[4:0], $rd_data1, $rd_en2, $rd_index2[4:0], $rd_data2)
+   m4+rf(32, 32, $reset, $rd_valid, $rd[4:0], $result[31:0], $rs1_valid, $rs1[4:0], $source_data1, $rs2_valid, $rs2[4:0], $source_data2)
    //m4+dmem(32, 32, $reset, $addr[4:0], $wr_en, $wr_data[31:0], $rd_en, $rd_data)
    m4+cpu_viz()
 \SV
