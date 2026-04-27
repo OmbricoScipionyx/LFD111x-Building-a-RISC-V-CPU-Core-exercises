@@ -43,7 +43,10 @@
    $reset = *reset;
    
    // program counter 
-   $next_pc[31:0] = $reset ? 32'b00 : 32'd4 + $pc;
+   $next_pc[31:0] = $reset ? 32'b00 :
+                    $taken_br ? $br_tgt_pc[31:0]:
+                    32'd4 + $pc;
+   
    $pc[31:0] = (>>1$next_pc[31:0]);
    // -------
    
@@ -81,7 +84,7 @@
    $rd_valid = ($is_r_instr ||
                 $is_i_instr ||
                 $is_u_instr ||
-                $is_j_instr) && ($rd[4:0] != 5'b0);
+                $is_j_instr) && ($rd[4:0] != 5'b0); //keep RF x0 = 0
    
    $funct3[2:0] = $instr[14:12];
    $funct3_valid = $is_r_instr ||
@@ -96,7 +99,7 @@
                 $is_j_instr;
    
    $imm[31:0] = $is_i_instr ? { {21{$instr[31]}}, $instr[30:20] } :
-                $is_s_instr ? { {21{$instr[31]}}, $instr[31:25], $instr[11:7] } :
+                $is_s_instr ? { {20{$instr[31]}}, $instr[31:25], $instr[11:7] } :
                 $is_b_instr ? { {20{$instr[31]}}, $instr[7], $instr[30:25], $instr[11:8], 1'b0 } : //not fair
                 $is_u_instr ? { $instr[31], $instr[30:20], $instr[19:12], 12'b0 } :
                 $is_j_instr ? { {12{$instr[31]}}, $instr[19:12], $instr[20], $instr[30:21], 1'b0 } :
@@ -119,10 +122,22 @@
                    $is_add ? $source_data1 + $source_data2 :
                    32'b0;
    
+   // Branch logic
+   
+   $taken_br = $is_beq ? $source_data1 == $source_data2:
+               $is_bne ? $source_data1 != $source_data2:
+               $is_blt ? ($source_data1 < $source_data2) ^ ($source_data1[31] != $source_data2[31]):
+               $is_bge ? ($source_data1 >= $source_data2) ^ ($source_data1[31] != $source_data2[31]):
+               $is_bltu ? $source_data1 < $source_data2:
+               $is_bgeu ? $source_data1 >= $source_data2:
+               1'b0;
+   
+   $br_tgt_pc[31:0] = $imm[31:0] + $pc[31:0];
+   
    `BOGUS_USE($dec_bits $is_bgeu $is_addi $is_add $imm $is_beq $is_bne $is_blt $is_bge $is_bltu $rd $rd_valid $rs1 $rs1_valid $rs2 $rs2_valid $imm_valid $funct3 $funct3_valid)
    
    // Assert these to end simulation (before Makerchip cycle limit).
-   *passed = 1'b0;
+   m4+tb()
    *failed = *cyc_cnt > M4_MAX_CYC;
    
    m4+rf(32, 32, $reset, $rd_valid, $rd[4:0], $result[31:0], $rs1_valid, $rs1[4:0], $source_data1, $rs2_valid, $rs2[4:0], $source_data2)
