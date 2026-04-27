@@ -185,6 +185,7 @@
                                       {31'b0, $source_data1[31]} ):
                    $is_sra ? $sra_rslt[31:0]:
                    $is_srai ? $srai_rslt[31:0]:
+                   $is_load ? $source_data1 + $imm:
                    32'b0;
    
    // Branch logic
@@ -200,14 +201,16 @@
    $br_tgt_pc[31:0] = $imm[31:0] + $pc[31:0];
    $jalr_tgt_pc[31:0] = $source_data1 + $imm;
    
+   $ld_data[31:0] = $is_load ? $rd_data : $result;
+   
    `BOGUS_USE($dec_bits $is_bgeu $is_addi $is_add $imm $is_beq $is_bne $is_blt $is_bge $is_bltu $rd $rd_valid $rs1 $rs1_valid $rs2 $rs2_valid $imm_valid $funct3 $funct3_valid)
    
    // Assert these to end simulation (before Makerchip cycle limit).
    m4+tb()
    *failed = *cyc_cnt > M4_MAX_CYC;
    
-   m4+rf(32, 32, $reset, $rd_valid, $rd[4:0], $result[31:0], $rs1_valid, $rs1[4:0], $source_data1, $rs2_valid, $rs2[4:0], $source_data2)
-   //m4+dmem(32, 32, $reset, $addr[4:0], $wr_en, $wr_data[31:0], $rd_en, $rd_data)
+   m4+rf(32, 32, $reset, $rd_valid, $rd[4:0], $ld_data[31:0], $rs1_valid, $rs1[4:0], $source_data1, $rs2_valid, $rs2[4:0], $source_data2)
+   m4+dmem(32, 32, $reset, $result[6:2], $is_s_instr, $source_data2[31:0], $is_load, $rd_data)
    m4+cpu_viz()
 \SV
    endmodule
